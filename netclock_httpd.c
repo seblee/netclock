@@ -41,164 +41,186 @@
 
 #define app_httpd_log(M, ...) custom_log("apphttpd", M, ##__VA_ARGS__)
 
-#define HTTPD_HDR_DEFORT (HTTPD_HDR_ADD_SERVER | HTTPD_HDR_ADD_CONN_CLOSE | HTTPD_HDR_ADD_PRAGMA_NO_CACHE)
+#define HTTPD_HDR_DEFORT (HTTPD_HDR_ADD_CONN_CLOSE)
 static bool is_http_init;
 static bool is_handlers_registered;
 struct httpd_wsgi_call g_app_handlers[];
 
-static int web_send_wifisetting_page(httpd_request_t *req)
+static int web_send_Get_Request(httpd_request_t *req)
 {
-  OSStatus err = kNoErr;
+    OSStatus err = kNoErr;
+    app_httpd_log("web_send_Get_Request");
 
-  err = httpd_send_all_header(req, HTTP_RES_200, sizeof(Eland_Data), HTTP_CONTENT_HTML_STR);
-  require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisetting headers."));
+    InitUpLoadData();
 
-  err = httpd_send_body(req->sock, (const unsigned char *)Eland_Data, sizeof(Eland_Data));
-  require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisetting body."));
+    err = httpd_send_all_header(req, HTTP_RES_200, sizeof(Eland_Data), HTTP_CONTENT_JSON_STR);
+    require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisetting headers."));
+
+    err = httpd_send_body(req->sock, (const unsigned char *)Eland_Data, sizeof(Eland_Data));
+    require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisetting body."));
 
 exit:
-  return err;
+    return err;
+}
+static int web_send_Post_Request(httpd_request_t *req)
+{
+    OSStatus err = kNoErr;
+    int buf_size = 1024;
+    char *buf;
+    app_httpd_log("web_send_Post_Request");
+    buf = malloc(buf_size);
+    err = httpd_get_data(req, buf, buf_size);
+    app_httpd_log("size = %d,buf = %s", req->body_nbytes, buf);
+    err = httpd_send_all_header(req, HTTP_RES_200, sizeof(Eland_Data), HTTP_CONTENT_JSON_STR);
+    require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisetting headers."));
+
+    err = httpd_send_body(req->sock, (const unsigned char *)Eland_Data, sizeof(Eland_Data));
+    require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisetting body."));
+
+    free(buf);
+exit:
+    return err;
 }
 
 static int web_send_result_page(httpd_request_t *req)
 {
-  OSStatus err = kNoErr;
-  bool para_succ = false;
-  int buf_size = 512;
-  char *buf;
-  char value_ssid[maxSsidLen];
-  char value_pass[maxKeyLen];
-  mico_Context_t *context = NULL;
+    OSStatus err = kNoErr;
+    bool para_succ = false;
+    int buf_size = 512;
+    char *buf;
+    char value_ssid[maxSsidLen];
+    char value_pass[maxKeyLen];
+    mico_Context_t *context = NULL;
 
-  context = mico_system_context_get();
+    context = mico_system_context_get();
 
-  buf = malloc(buf_size);
+    buf = malloc(buf_size);
 
-  err = httpd_get_data(req, buf, buf_size);
-  require_noerr(err, Save_Out);
+    err = httpd_get_data(req, buf, buf_size);
+    require_noerr(err, Save_Out);
 
-  err = httpd_get_tag_from_post_data(buf, "SSID", value_ssid, maxSsidLen);
-  require_noerr(err, Save_Out);
+    err = httpd_get_tag_from_post_data(buf, "SSID", value_ssid, maxSsidLen);
+    require_noerr(err, Save_Out);
 
-  if (!strncmp(value_ssid, "\0", 1))
-    goto Save_Out;
+    if (!strncmp(value_ssid, "\0", 1))
+        goto Save_Out;
 
-  strncpy(context->micoSystemConfig.ssid, value_ssid, maxSsidLen);
+    strncpy(context->micoSystemConfig.ssid, value_ssid, maxSsidLen);
 
-  err = httpd_get_tag_from_post_data(buf, "PASS", value_pass, maxKeyLen);
-  require_noerr(err, Save_Out);
+    err = httpd_get_tag_from_post_data(buf, "PASS", value_pass, maxKeyLen);
+    require_noerr(err, Save_Out);
 
-  strncpy(context->micoSystemConfig.key, value_pass, maxKeyLen);
-  strncpy(context->micoSystemConfig.user_key, value_pass, maxKeyLen);
-  context->micoSystemConfig.keyLength = strlen(context->micoSystemConfig.key);
-  context->micoSystemConfig.user_keyLength = strlen(context->micoSystemConfig.key);
+    strncpy(context->micoSystemConfig.key, value_pass, maxKeyLen);
+    strncpy(context->micoSystemConfig.user_key, value_pass, maxKeyLen);
+    context->micoSystemConfig.keyLength = strlen(context->micoSystemConfig.key);
+    context->micoSystemConfig.user_keyLength = strlen(context->micoSystemConfig.key);
 
-  context->micoSystemConfig.channel = 0;
-  memset(context->micoSystemConfig.bssid, 0x0, 6);
-  context->micoSystemConfig.security = SECURITY_TYPE_AUTO;
-  context->micoSystemConfig.dhcpEnable = true;
+    context->micoSystemConfig.channel = 0;
+    memset(context->micoSystemConfig.bssid, 0x0, 6);
+    context->micoSystemConfig.security = SECURITY_TYPE_AUTO;
+    context->micoSystemConfig.dhcpEnable = true;
 
-  para_succ = true;
+    para_succ = true;
 
 Save_Out:
 
-  if (para_succ == true)
-  {
-    err = httpd_send_all_header(req, HTTP_RES_200, sizeof(Eland_Data), HTTP_CONTENT_HTML_STR);
-    require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisuccess headers."));
+    if (para_succ == true)
+    {
+        err = httpd_send_all_header(req, HTTP_RES_200, sizeof(Eland_Data), HTTP_CONTENT_JSON_STR);
+        require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisuccess headers."));
 
-    err = httpd_send_body(req->sock, (const unsigned char *)Eland_Data, sizeof(Eland_Data));
-    require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisuccess body."));
+        err = httpd_send_body(req->sock, (const unsigned char *)Eland_Data, sizeof(Eland_Data));
+        require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisuccess body."));
 
-    context->micoSystemConfig.configured = allConfigured;
+        context->micoSystemConfig.configured = allConfigured;
 
-    mico_system_context_update(context);
+        mico_system_context_update(context);
 
-    mico_system_power_perform(context, eState_Software_Reset);
-  }
-  else
-  {
-    err = httpd_send_all_header(req, HTTP_RES_200, sizeof(Eland_Data), HTTP_CONTENT_HTML_STR);
-    require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wififail headers."));
+        mico_system_power_perform(context, eState_Software_Reset);
+    }
+    else
+    {
+        err = httpd_send_all_header(req, HTTP_RES_200, sizeof(Eland_Data), HTTP_CONTENT_JSON_STR);
+        require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wififail headers."));
 
-    err = httpd_send_body(req->sock, (const unsigned char *)Eland_Data, sizeof(Eland_Data));
-    require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wififail body."));
-  }
+        err = httpd_send_body(req->sock, (const unsigned char *)Eland_Data, sizeof(Eland_Data));
+        require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wififail body."));
+    }
 
 exit:
-  if (buf)
-    free(buf);
-  return err;
+    if (buf)
+        free(buf);
+    return err;
 }
 
 struct httpd_wsgi_call g_app_handlers[] = {
-    {"/", HTTPD_HDR_DEFORT, 0, web_send_wifisetting_page, NULL, NULL, NULL},
-    {"/result.htm", HTTPD_HDR_DEFORT, 0, NULL, web_send_result_page, NULL, NULL},
-    {"/setting.htm", HTTPD_HDR_DEFORT, 0, web_send_wifisetting_page, NULL, NULL, NULL},
+    {"/", HTTPD_HDR_DEFORT, 0, web_send_Get_Request, web_send_Post_Request, NULL, NULL},
+    {"/result.htm", HTTPD_HDR_DEFORT, 0, web_send_Get_Request, web_send_Post_Request, NULL, NULL},
+    {"/setting.htm", HTTPD_HDR_DEFORT, 0, web_send_Get_Request, web_send_Post_Request, NULL, NULL},
 };
 
 static int g_app_handlers_no = sizeof(g_app_handlers) / sizeof(struct httpd_wsgi_call);
 
 static void app_http_register_handlers()
 {
-  int rc;
-  rc = httpd_register_wsgi_handlers(g_app_handlers, g_app_handlers_no);
-  if (rc)
-  {
-    app_httpd_log("failed to register test web handler");
-  }
+    int rc;
+    rc = httpd_register_wsgi_handlers(g_app_handlers, g_app_handlers_no);
+    if (rc)
+    {
+        app_httpd_log("failed to register test web handler");
+    }
 }
 
 static int _app_httpd_start()
 {
-  OSStatus err = kNoErr;
-  app_httpd_log("initializing web-services");
+    OSStatus err = kNoErr;
+    app_httpd_log("initializing web-services");
 
-  /*Initialize HTTPD*/
-  if (is_http_init == false)
-  {
-    err = httpd_init();
-    require_noerr_action(err, exit, app_httpd_log("failed to initialize httpd"));
-    is_http_init = true;
-  }
+    /*Initialize HTTPD*/
+    if (is_http_init == false)
+    {
+        err = httpd_init();
+        require_noerr_action(err, exit, app_httpd_log("failed to initialize httpd"));
+        is_http_init = true;
+    }
 
-  /*Start http thread*/
-  err = httpd_start();
-  if (err != kNoErr)
-  {
-    app_httpd_log("failed to start httpd thread");
-    httpd_shutdown();
-  }
+    /*Start http thread*/
+    err = httpd_start();
+    if (err != kNoErr)
+    {
+        app_httpd_log("failed to start httpd thread");
+        httpd_shutdown();
+    }
 exit:
-  return err;
+    return err;
 }
 
 int Eland_httpd_start(void)
 {
-  OSStatus err = kNoErr;
+    OSStatus err = kNoErr;
 
-  err = _app_httpd_start();
-  require_noerr(err, exit);
+    err = _app_httpd_start();
+    require_noerr(err, exit);
 
-  if (is_handlers_registered == false)
-  {
-    app_http_register_handlers();
-    is_handlers_registered = true;
-  }
+    if (is_handlers_registered == false)
+    {
+        app_http_register_handlers();
+        is_handlers_registered = true;
+    }
 
 exit:
-  return err;
+    return err;
 }
 
 int Eland_httpd_stop()
 {
-  OSStatus err = kNoErr;
+    OSStatus err = kNoErr;
 
-  /* HTTPD and services */
-  app_httpd_log("stopping down httpd");
-  err = httpd_stop();
-  require_noerr_action(err, exit, app_httpd_log("failed to halt httpd"));
+    /* HTTPD and services */
+    app_httpd_log("stopping down httpd");
+    err = httpd_stop();
+    require_noerr_action(err, exit, app_httpd_log("failed to halt httpd"));
 
 exit:
-  return err;
+    return err;
 }

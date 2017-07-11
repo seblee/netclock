@@ -7,7 +7,7 @@ ELAND_DES_S *netclock_des_g = NULL;
 static bool NetclockInitSuccess = false;
 
 static mico_semaphore_t NetclockInitCompleteSem = NULL;
-
+json_object *ElandJsonData = NULL;
 OSStatus netclock_desInit(void)
 {
     OSStatus err = kGeneralErr;
@@ -176,7 +176,7 @@ void ElandParameterConfiguration(mico_thread_arg_t args)
 
     /* start http server thread */
     Eland_httpd_start();
-    mico_rtos_delete_thread( NULL );
+    mico_rtos_delete_thread(NULL);
 }
 //获取网络连接状态
 bool get_wifi_status(void)
@@ -196,3 +196,28 @@ const char Eland_Data[11] = {"ElandData"};
 {"name":"ElandData","V":[{"N":"ElandID","Type":"str","V":"","T":"R"},{"N":"UserID","Type":"int32","V":0,"T":"W"},{"N":"N","Type":"str","V":"ElandName","T":"W"},{"N":"ZoneOffset","Type":"int32","V":32400,"T":"W"},{"N":"Serial","Type":"str","V":"000000","T":"R"},{"N":"FirmwareVersion","Type":"str","V":"01.00","T":"R"},{"N":"MAC","Type":"str","V":"000000000000","T":"R"},{"N":"DHCPEnable","Type":"int32","V":1,"T":"W"},{"N":"IPstr","Type":"str","V":"0","T":"W"},{"N":"SubnetMask","Type":"str","V":"0","T":"W"},{"N":"DefaultGateway","Type":"str","V":"0","T":"W"},{"N":"BackLightOffEnable","Type":"int32","V":1,"T":"W"},{"N":"BackLightOffBeginTime","Type":"str","V":"05:00:00","T":"W"},{"N":"BackLightOffEndTime","Type":"str","V":"05:10:00","T":"W"},{"N":"BackLightOffEndTime","Type":"str","V":"05:10:00","T":"W"},{"N":"FirmwareUpdateUrl","Type":"str","V":"url","T":"W"},[{"N":"AlarmData","V":[{"N":"AlarmID","Type":"int32","V":1,"T":"W"},{"N":"AlarmDateTime","Type":"str","V":"yyyy-MM-dd","T":"W"},{"N":"SnoozeEnabled","Type":"int32","V":0,"T":"W"},{"N":"SnoozeCount","Type":"int32","V":3,"T":"W"},{"N":"SnoozeIntervalMin","Type":"int32","V":10,"T":"W"},{"N":"AlarmPattern","Type":"int32","V":1,"T":"W"},{"N":"AlarmSoundDounloadURL","Type":"str","V":"url","T":"W"},{"N":"AlarmVoiceDounloadURL","Type":"str","V":"url","T":"W"},{"N":"AlarmVolume","Type":"int32","V":80,"T":"W"},{"N":"VolumeStepupEnabled","Type":"int32","V":0,"T":"W"},{"N":"AlarmContinueMin","Type":"int32","V":5,"T":"W"}]}]]}
 
 *******/
+OSStatus InitUpLoadData(void)
+{
+    OSStatus err = kNoErr;
+    if (ElandJsonData != NULL)
+    {
+        free_json_obj(&ElandJsonData);
+    }
+    ElandJsonData = json_object_new_object();
+    require_action_string(mico_data, exit, err = kNoMemoryErr, "create json object error!");
+
+exit:
+    return err;
+}
+
+//释放JSON对象
+void free_json_obj(json_object **json_obj)
+{
+    if (*json_obj != NULL)
+    {
+        json_object_put(*json_obj); // free memory of json object
+        *json_obj = NULL;
+    }
+
+    return;
+}

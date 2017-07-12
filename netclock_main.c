@@ -40,14 +40,27 @@ static mico_semaphore_t wifi_netclock = NULL;
 
 void micoNotify_WifiStatusHandler(WiFiEvent status, void *const inContext)
 {
+    IPStatusTypedef *IPStatus_Cache = NULL;
     switch (status)
     {
     case NOTIFY_STATION_UP:
-        app_netclock_log("Wi-Fi connected.");
+        app_netclock_log("Wi-Fi STATION connected.");
         mico_rtos_set_semaphore(&wifi_netclock);
         break;
     case NOTIFY_STATION_DOWN:
-        app_netclock_log("Wi-Fi disconnected.");
+        app_netclock_log("Wi-Fi STATION disconnected.");
+
+        break;
+    case NOTIFY_AP_UP:
+        app_netclock_log("AP OK");
+        IPStatus_Cache = malloc(sizeof(IPStatusTypedef));
+        micoWlanGetIPStatus(IPStatus_Cache, Soft_AP);
+        memset(netclock_des_g->ElandIPstr, 0, sizeof(netclock_des_g->ElandIPstr));
+        sprintf(netclock_des_g->ElandIPstr, )
+            netclock_des_g->ElandIPstr = IPStatus_Cache->ip;
+        break;
+    case NOTIFY_AP_DOWN:
+        app_netclock_log("uAP disconnected.");
         break;
     default:
         break;

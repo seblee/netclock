@@ -29,6 +29,5 @@ $(NAME)_SOURCES := netclock_main.c \
 				   netclock_httpd.c
 
 #$(NAME)_LINK_FILES := netclock_main.o netclock.o
-
 #$(NAME)_COMPONENTS := protocols/fog_v2
 $(NAME)_COMPONENTS += daemons/http_server

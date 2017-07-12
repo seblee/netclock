@@ -30,7 +30,8 @@
  *
  ******************************************************************************
  */
-
+#ifndef NETCLOCK_HTTPD_H_
+#define NETCLOCK_HTTPD_H_
 extern const unsigned char wififail[0xAC9];
 
 extern const unsigned char wifisetting[0xD5E];
@@ -40,3 +41,5 @@ extern const unsigned char wifisuccess[0x9BC];
 int Eland_httpd_start(void);
 
 int Eland_httpd_stop();
+
+#endif

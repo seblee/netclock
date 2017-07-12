@@ -34,7 +34,6 @@
 #pragma once
 
 #define APP_INFO "MiCO BASIC Demo"
-
 #define FIRMWARE_REVISION "MICO_BASIC_1_0"
 #define MANUFACTURER "MXCHIP Inc."
 #define SERIAL_NUMBER "20140606"
@@ -52,7 +51,7 @@
 
 #define EasyLink_TimeOut 600000 /**< EasyLink timeout 60 seconds. */
 
-#define EasyLink_ConnectWlan_Timeout 20000 /**< Connect to wlan after configured by easylink. \ \ \
+#define EasyLink_ConnectWlan_Timeout 20000 /**< Connect to wlan after configured by easylink. \ \ \ \ \ \ \ \ \ \ \ \
                                                 Restart easylink after timeout: 20 seconds. */
 
 /************************************************************************

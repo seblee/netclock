@@ -35,7 +35,6 @@
 #include <httpd.h>
 #include <http_parse.h>
 #include <http-strings.h>
-
 #include "mico.h"
 #include "httpd_priv.h"
 
@@ -49,17 +48,26 @@ struct httpd_wsgi_call g_app_handlers[];
 static int web_send_Get_Request(httpd_request_t *req)
 {
     OSStatus err = kNoErr;
+    char *upload_data = NULL;
+    uint32_t upload_data_len = 1024;
     app_httpd_log("web_send_Get_Request");
+    upload_data = malloc(upload_data_len);
+    memset(upload_data, 0, upload_data_len);
+    InitUpLoadData(upload_data);
 
-    InitUpLoadData();
-
-    err = httpd_send_all_header(req, HTTP_RES_200, sizeof(Eland_Data), HTTP_CONTENT_JSON_STR);
+    err = httpd_send_all_header(req, HTTP_RES_200, strlen(upload_data), HTTP_CONTENT_JSON_STR);
     require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisetting headers."));
 
-    err = httpd_send_body(req->sock, (const unsigned char *)Eland_Data, sizeof(Eland_Data));
+    err = httpd_send_body(req->sock, (const unsigned char *)upload_data, strlen(upload_data));
     require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisetting body."));
 
 exit:
+    if (upload_data != NULL) //回收资源
+    {
+        free(upload_data);
+        upload_data = NULL;
+    }
+    destory_upload_data(); //回收资源
     return err;
 }
 static int web_send_Post_Request(httpd_request_t *req)

@@ -11,6 +11,7 @@
 
 #define Eland_ID ("0123456789ABCDEF")    //Eland唯一识别的ID
 #define Eland_Firmware_Version ("01.00") //Eland固件版本号
+#define Serial_Number ("01000001")       //Eland的串口番号
 
 #define Timezone_offset_sec_Min ((int32_t)-43200) //时区offset最小值
 #define Timezone_offset_sec_Max ((int32_t)50400)  //时区offset最大值
@@ -40,6 +41,7 @@ typedef struct _AlarmOffHistoryData //闹钟履历结构体
     char AlarmOffDateTime[25]; //闹钟停止时间。"yyyy-MM-dd HH:mm:ss"的形式。 （ex : "2017-06-21 15:30:00"）
     int32_t AlarmOffReason;    //闹钟停止的理由。 1 : 用户操作 2 : 自動停止
 } AlarmOffHistoryData;
+
 typedef struct _ELAND_DES_S //设备状态结构
 {
     bool IsActivate;       //是否已激活设备

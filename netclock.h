@@ -19,8 +19,9 @@ OSStatus StartNetclockService(void);
 bool CheckNetclockDESSetting(void);
 OSStatus Netclock_des_recovery(void);
 void ElandParameterConfiguration(mico_thread_arg_t args);
+
 bool get_wifi_status(void);
 
 void free_json_obj(json_object **json_obj);
-
+void destory_upload_data(void);
 #endif /* NETCLOCK_NETCLOCK_H_ */

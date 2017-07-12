@@ -33,6 +33,7 @@
 #include "mico.h"
 #include "netclockconfig.h"
 #include "netclock.h"
+
 #define app_netclock_log(format, ...) custom_log("APP", format, ##__VA_ARGS__)
 #define app_log_trace() custom_log_trace("APP")
 static mico_semaphore_t wifi_netclock = NULL;
@@ -82,7 +83,6 @@ int application_start(void)
     app_netclock_log("start netclock service");
     err = StartNetclockService();
     require_noerr(err, exit);
-
 
 /* Output on debug serial port */
 exit:

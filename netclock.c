@@ -8,6 +8,7 @@ static bool NetclockInitSuccess = false;
 
 static mico_semaphore_t NetclockInitCompleteSem = NULL;
 json_object *ElandJsonData = NULL;
+json_object *AlarmJsonData = NULL;
 OSStatus netclock_desInit(void)
 {
     OSStatus err = kGeneralErr;
@@ -37,6 +38,7 @@ exit:
 
     return kGeneralErr;
 }
+
 /**/
 OSStatus InitNetclockService(void)
 {
@@ -170,7 +172,6 @@ void ElandParameterConfiguration(mico_thread_arg_t args)
     strcpy((char *)wNetConfig.local_ip_addr, "192.168.0.1");
     strcpy((char *)wNetConfig.net_mask, "255.255.255.0");
     strcpy((char *)wNetConfig.dnsServer_ip_addr, "192.168.0.1");
-
     Eland_log("ssid:%s  key:%s", wNetConfig.wifi_ssid, wNetConfig.wifi_key);
     micoWlanStart(&wNetConfig);
 
@@ -196,17 +197,65 @@ const char Eland_Data[11] = {"ElandData"};
 {"name":"ElandData","V":[{"N":"ElandID","Type":"str","V":"","T":"R"},{"N":"UserID","Type":"int32","V":0,"T":"W"},{"N":"N","Type":"str","V":"ElandName","T":"W"},{"N":"ZoneOffset","Type":"int32","V":32400,"T":"W"},{"N":"Serial","Type":"str","V":"000000","T":"R"},{"N":"FirmwareVersion","Type":"str","V":"01.00","T":"R"},{"N":"MAC","Type":"str","V":"000000000000","T":"R"},{"N":"DHCPEnable","Type":"int32","V":1,"T":"W"},{"N":"IPstr","Type":"str","V":"0","T":"W"},{"N":"SubnetMask","Type":"str","V":"0","T":"W"},{"N":"DefaultGateway","Type":"str","V":"0","T":"W"},{"N":"BackLightOffEnable","Type":"int32","V":1,"T":"W"},{"N":"BackLightOffBeginTime","Type":"str","V":"05:00:00","T":"W"},{"N":"BackLightOffEndTime","Type":"str","V":"05:10:00","T":"W"},{"N":"BackLightOffEndTime","Type":"str","V":"05:10:00","T":"W"},{"N":"FirmwareUpdateUrl","Type":"str","V":"url","T":"W"},[{"N":"AlarmData","V":[{"N":"AlarmID","Type":"int32","V":1,"T":"W"},{"N":"AlarmDateTime","Type":"str","V":"yyyy-MM-dd","T":"W"},{"N":"SnoozeEnabled","Type":"int32","V":0,"T":"W"},{"N":"SnoozeCount","Type":"int32","V":3,"T":"W"},{"N":"SnoozeIntervalMin","Type":"int32","V":10,"T":"W"},{"N":"AlarmPattern","Type":"int32","V":1,"T":"W"},{"N":"AlarmSoundDounloadURL","Type":"str","V":"url","T":"W"},{"N":"AlarmVoiceDounloadURL","Type":"str","V":"url","T":"W"},{"N":"AlarmVolume","Type":"int32","V":80,"T":"W"},{"N":"VolumeStepupEnabled","Type":"int32","V":0,"T":"W"},{"N":"AlarmContinueMin","Type":"int32","V":5,"T":"W"}]}]]}
 
 *******/
-OSStatus InitUpLoadData(void)
+OSStatus InitUpLoadData(char *OutputJsonstring)
 {
     OSStatus err = kNoErr;
-    if (ElandJsonData != NULL)
+    json_object *peripherals_member = NULL;
+    const char *generate_data = NULL;
+    uint32_t generate_data_len = 0;
+    if ((ElandJsonData != NULL) || (AlarmJsonData != NULL))
     {
         free_json_obj(&ElandJsonData);
+        free_json_obj(&AlarmJsonData);
     }
     ElandJsonData = json_object_new_object();
-    require_action_string(mico_data, exit, err = kNoMemoryErr, "create json object error!");
+    require_action_string(ElandJsonData, exit, err = kNoMemoryErr, "create ElandJsonData object error!");
+
+    Eland_log("Begin add ElandJsonData object");
+    json_object_object_add(ElandJsonData, "ElandID", json_object_new_string(Eland_ID));
+    json_object_object_add(ElandJsonData, "UserID", json_object_new_int(netclock_des_g->UserID));
+    json_object_object_add(ElandJsonData, "ElandName", json_object_new_string(netclock_des_g->ElandName));
+    json_object_object_add(ElandJsonData, "ZoneOffset", json_object_new_int(netclock_des_g->ElandZoneOffset));
+    json_object_object_add(ElandJsonData, "Serial", json_object_new_string(Serial_Number));
+    json_object_object_add(ElandJsonData, "FirmwareVersion", json_object_new_string(Eland_Firmware_Version));
+    json_object_object_add(ElandJsonData, "MAC", json_object_new_string(netclock_des_g->ElandMAC));
+    json_object_object_add(ElandJsonData, "DHCPEnable", json_object_new_int(netclock_des_g->ElandDHCPEnable));
+    json_object_object_add(ElandJsonData, "IPstr", json_object_new_string(netclock_des_g->ElandIPstr));
+    json_object_object_add(ElandJsonData, "SubnetMask", json_object_new_string(netclock_des_g->ElandSubnetMask));
+    json_object_object_add(ElandJsonData, "DefaultGateway", json_object_new_string(netclock_des_g->ElandDefaultGateway));
+    json_object_object_add(ElandJsonData, "BackLightOffEnablefield", json_object_new_int(netclock_des_g->ElandBackLightOffEnable));
+    json_object_object_add(ElandJsonData, "BackLightOffBeginTime", json_object_new_string(netclock_des_g->ElandBackLightOffBeginTime));
+    json_object_object_add(ElandJsonData, "BackLightOffEndTime", json_object_new_string(netclock_des_g->ElandBackLightOffBeginTime));
+    json_object_object_add(ElandJsonData, "FirmwareUpdateUrl", json_object_new_string(netclock_des_g->ElandFirmwareUpdateUrl));
+
+    AlarmJsonData = json_object_new_object();
+    require_action_string(AlarmJsonData, exit, err = kNoMemoryErr, "create AlarmJsonData object error!");
+
+    Eland_log("Begin add AlarmJsonData object");
+    json_object_object_add(AlarmJsonData, "AlarmID", json_object_new_int(netclock_des_g->ElandNextAlarmData.AlarmID));
+    json_object_object_add(AlarmJsonData, "AlarmDateTime", json_object_new_string(netclock_des_g->ElandNextAlarmData.AlarmDateTime));
+    json_object_object_add(AlarmJsonData, "SnoozeEnabled", json_object_new_int(netclock_des_g->ElandNextAlarmData.SnoozeEnabled));
+    json_object_object_add(AlarmJsonData, "SnoozeCount", json_object_new_int(netclock_des_g->ElandNextAlarmData.SnoozeCount));
+    json_object_object_add(AlarmJsonData, "SnoozeIntervalMin", json_object_new_int(netclock_des_g->ElandNextAlarmData.SnoozeIntervalMin));
+    json_object_object_add(AlarmJsonData, "AlarmPattern", json_object_new_int(netclock_des_g->ElandNextAlarmData.AlarmPattern));
+    json_object_object_add(AlarmJsonData, "AlarmSoundDounloadURL", json_object_new_string(netclock_des_g->ElandNextAlarmData.AlarmSoundDounloadURL));
+    json_object_object_add(AlarmJsonData, "AlarmVoiceDounloadURL", json_object_new_string(netclock_des_g->ElandNextAlarmData.AlarmVoiceDounloadURL));
+    json_object_object_add(AlarmJsonData, "AlarmVolume", json_object_new_int(netclock_des_g->ElandNextAlarmData.AlarmVolume));
+    json_object_object_add(AlarmJsonData, "VolumeStepupEnabled", json_object_new_int(netclock_des_g->ElandNextAlarmData.VolumeStepupEnabled));
+    json_object_object_add(AlarmJsonData, "AlarmContinueMin", json_object_new_int(netclock_des_g->ElandNextAlarmData.AlarmContinueMin));
+
+    json_object_object_add(ElandJsonData, "AlarmData", AlarmJsonData);
+    peripherals_member = json_object_new_object();
+    require_action_string(peripherals_member, exit, err = kNoMemoryErr, "create peripherals_member error!");
+    json_object_object_add(peripherals_member, "ElandData", ElandJsonData);
+
+    generate_data = json_object_to_json_string(peripherals_member);
+    generate_data_len = strlen(generate_data);
+    memcpy(OutputJsonstring, generate_data, generate_data_len);
 
 exit:
+    free_json_obj(&ElandJsonData);
+    free_json_obj(&AlarmJsonData);
     return err;
 }
 
@@ -219,5 +268,12 @@ void free_json_obj(json_object **json_obj)
         *json_obj = NULL;
     }
 
+    return;
+}
+//8.注销外设数据
+void destory_upload_data(void)
+{
+    free_json_obj(&ElandJsonData);
+    free_json_obj(&AlarmJsonData);
     return;
 }

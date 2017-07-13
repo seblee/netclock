@@ -74,22 +74,52 @@ static int web_send_Post_Request(httpd_request_t *req)
 {
     OSStatus err = kNoErr;
     int buf_size = 1024;
-    char *buf;
+    char *buf = NULL;
+    mico_Context_t *context = NULL;
+    bool para_succ = false;
     app_httpd_log("web_send_Post_Request");
     buf = malloc(buf_size);
+    memset(buf, 0, buf_size);
     err = httpd_get_data(req, buf, buf_size);
     app_httpd_log("size = %d,buf = %s", req->body_nbytes, buf);
-    err = httpd_send_all_header(req, HTTP_RES_200, sizeof(Eland_Data), HTTP_CONTENT_JSON_STR);
+    if (ProcessPostJson(buf) == kNoErr)
+    {
+        context = mico_system_context_get();
+        strncpy(context->micoSystemConfig.ssid, netclock_des_g->Wifissid, ElandSsid_Len);
+        strncpy(context->micoSystemConfig.key, netclock_des_g->WifiKey, ElandKey_Len);
+        strncpy(context->micoSystemConfig.user_key, netclock_des_g->WifiKey, ElandKey_Len);
+        context->micoSystemConfig.keyLength = strlen(context->micoSystemConfig.key);
+        context->micoSystemConfig.user_keyLength = strlen(context->micoSystemConfig.key);
+
+        context->micoSystemConfig.channel = 0;
+        memset(context->micoSystemConfig.bssid, 0x0, 6);
+        context->micoSystemConfig.security = SECURITY_TYPE_AUTO;
+        context->micoSystemConfig.dhcpEnable = true;
+
+        para_succ = true;
+    }
+    app_httpd_log("web_send_Get_Request");
+    memset(buf, 0, buf_size);
+    InitUpLoadData(buf);
+    err = httpd_send_all_header(req, HTTP_RES_200, strlen(buf), HTTP_CONTENT_JSON_STR);
     require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisetting headers."));
 
-    err = httpd_send_body(req->sock, (const unsigned char *)Eland_Data, sizeof(Eland_Data));
+    err = httpd_send_body(req->sock, (const unsigned char *)buf, strlen(buf));
     require_noerr_action(err, exit, app_httpd_log("ERROR: Unable to send http wifisetting body."));
+    if (para_succ == true)
+    {
+        context->micoSystemConfig.configured = allConfigured;
 
+        mico_system_context_update(context);
+
+        mico_system_power_perform(context, eState_Software_Reset);
+    }
     free(buf);
+    buf = NULL;
 exit:
     return err;
 }
-
+/*
 static int web_send_result_page(httpd_request_t *req)
 {
     OSStatus err = kNoErr;
@@ -160,7 +190,7 @@ exit:
         free(buf);
     return err;
 }
-
+*/
 struct httpd_wsgi_call g_app_handlers[] = {
     {"/", HTTPD_HDR_DEFORT, 0, web_send_Get_Request, web_send_Post_Request, NULL, NULL},
     {"/result.htm", HTTPD_HDR_DEFORT, 0, web_send_Get_Request, web_send_Post_Request, NULL, NULL},

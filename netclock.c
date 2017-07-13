@@ -1,6 +1,7 @@
 #include "netclockconfig.h"
 #include "netclock.h"
 #include "netclock_httpd.h"
+#include "json_c/json.h"
 #define Eland_log(M, ...) custom_log("Eland", M, ##__VA_ARGS__)
 
 ELAND_DES_S *netclock_des_g = NULL;
@@ -25,6 +26,15 @@ OSStatus netclock_desInit(void)
         Eland_log("netclock_AP");
         mico_rtos_create_thread(NULL, MICO_APPLICATION_PRIORITY, "Para_config",
                                 ElandParameterConfiguration, 0x1000, (uint32_t)NULL);
+    }
+    else
+    {
+        Eland_log("已经激活");
+        while (1)
+        {
+            MicoGpioOutputTrigger(MICO_SYS_LED);
+            mico_thread_sleep(1);
+        }
     }
 
     return kNoErr;
@@ -194,7 +204,7 @@ bool get_wifi_status(void)
 const char Eland_Data[11] = {"ElandData"};
 
 /********
-{"name":"ElandData","V":[{"N":"ElandID","Type":"str","V":"","T":"R"},{"N":"UserID","Type":"int32","V":0,"T":"W"},{"N":"N","Type":"str","V":"ElandName","T":"W"},{"N":"ZoneOffset","Type":"int32","V":32400,"T":"W"},{"N":"Serial","Type":"str","V":"000000","T":"R"},{"N":"FirmwareVersion","Type":"str","V":"01.00","T":"R"},{"N":"MAC","Type":"str","V":"000000000000","T":"R"},{"N":"DHCPEnable","Type":"int32","V":1,"T":"W"},{"N":"IPstr","Type":"str","V":"0","T":"W"},{"N":"SubnetMask","Type":"str","V":"0","T":"W"},{"N":"DefaultGateway","Type":"str","V":"0","T":"W"},{"N":"BackLightOffEnable","Type":"int32","V":1,"T":"W"},{"N":"BackLightOffBeginTime","Type":"str","V":"05:00:00","T":"W"},{"N":"BackLightOffEndTime","Type":"str","V":"05:10:00","T":"W"},{"N":"BackLightOffEndTime","Type":"str","V":"05:10:00","T":"W"},{"N":"FirmwareUpdateUrl","Type":"str","V":"url","T":"W"},[{"N":"AlarmData","V":[{"N":"AlarmID","Type":"int32","V":1,"T":"W"},{"N":"AlarmDateTime","Type":"str","V":"yyyy-MM-dd","T":"W"},{"N":"SnoozeEnabled","Type":"int32","V":0,"T":"W"},{"N":"SnoozeCount","Type":"int32","V":3,"T":"W"},{"N":"SnoozeIntervalMin","Type":"int32","V":10,"T":"W"},{"N":"AlarmPattern","Type":"int32","V":1,"T":"W"},{"N":"AlarmSoundDounloadURL","Type":"str","V":"url","T":"W"},{"N":"AlarmVoiceDounloadURL","Type":"str","V":"url","T":"W"},{"N":"AlarmVolume","Type":"int32","V":80,"T":"W"},{"N":"VolumeStepupEnabled","Type":"int32","V":0,"T":"W"},{"N":"AlarmContinueMin","Type":"int32","V":5,"T":"W"}]}]]}
+{"name":"ElandData","V":[{"N":"ElandID","Type":"str","V":"","T":"R"},{"N":"UserID","Type":"int32","V":0,"T":"W"},{"N":"N","Type":"str","V":"ElandName","T":"W"},{"N":"ZoneOffset","Type":"int32","V":32400,"T":"W"},{"N":"Serial","Type":"str","V":"000000","T":"R"},{"N":"FirmwareVersion","Type":"str","V":"01.00","T":"R"},{"N":"MAC","Type":"str","V":"000000000000","T":"R"},{"N":"DHCPEnable","Type":"int32","V":1,"T":"W"},{"N":"IPstr","Type":"str","V":"0","T":"W"},{"N":"SubnetMask","Type":"str","V":"0","T":"W"},{"N":"DefaultGateway","Type":"str","V":"0","T":"W"},{"N":"BackLightOffEnable","Type":"int32","V":1,"T":"W"},{"N":"BackLightOffBeginTime","Type":"str","V":"05:00:00","T":"W"},{"N":"BackLightOffEndTime","Type":"str","V":"05:10:00","T":"W"},{"N":"BackLightOffEndTime","Type":"str","V":"05:10:00","T":"W"},{"N":"FirmwareUpdateUrl","Type":"str","V":"url","T":"W"},[{"N":"AlarmData","V":[{"N":"AlarmID","Type":"int32","V":1,"T":"W"},{"N":"AlarmDateTime","Type":"str","V":"yyyy-MM-dd","T":"W"},{"N":"SnoozeEnabled","Type":"int32","V":0,"T":"W"},{"N":"SnoozeCount","Type":"int32","V":3,"T":"W"},{"N":"SnoozeIntervalMin","Type":"int32","V":10,"T":"W"},{"N":"AlarmPattern","Type":"int32","V":1,"T":"W"},{"N":"AlarmSoundDownloadURL","Type":"str","V":"url","T":"W"},{"N":"AlarmVoiceDownloadURL","Type":"str","V":"url","T":"W"},{"N":"AlarmVolume","Type":"int32","V":80,"T":"W"},{"N":"VolumeStepupEnabled","Type":"int32","V":0,"T":"W"},{"N":"AlarmContinueMin","Type":"int32","V":5,"T":"W"}]}]]}
 
 *******/
 OSStatus InitUpLoadData(char *OutputJsonstring)
@@ -219,6 +229,8 @@ OSStatus InitUpLoadData(char *OutputJsonstring)
     json_object_object_add(ElandJsonData, "Serial", json_object_new_string(Serial_Number));
     json_object_object_add(ElandJsonData, "FirmwareVersion", json_object_new_string(Eland_Firmware_Version));
     json_object_object_add(ElandJsonData, "MAC", json_object_new_string(netclock_des_g->ElandMAC));
+    json_object_object_add(ElandJsonData, "WIFISSID", json_object_new_string(netclock_des_g->Wifissid));
+    json_object_object_add(ElandJsonData, "WIFIKEY", json_object_new_string(netclock_des_g->WifiKey));
     json_object_object_add(ElandJsonData, "DHCPEnable", json_object_new_int(netclock_des_g->ElandDHCPEnable));
     json_object_object_add(ElandJsonData, "IPstr", json_object_new_string(netclock_des_g->ElandIPstr));
     json_object_object_add(ElandJsonData, "SubnetMask", json_object_new_string(netclock_des_g->ElandSubnetMask));
@@ -238,8 +250,8 @@ OSStatus InitUpLoadData(char *OutputJsonstring)
     json_object_object_add(AlarmJsonData, "SnoozeCount", json_object_new_int(netclock_des_g->ElandNextAlarmData.SnoozeCount));
     json_object_object_add(AlarmJsonData, "SnoozeIntervalMin", json_object_new_int(netclock_des_g->ElandNextAlarmData.SnoozeIntervalMin));
     json_object_object_add(AlarmJsonData, "AlarmPattern", json_object_new_int(netclock_des_g->ElandNextAlarmData.AlarmPattern));
-    json_object_object_add(AlarmJsonData, "AlarmSoundDounloadURL", json_object_new_string(netclock_des_g->ElandNextAlarmData.AlarmSoundDounloadURL));
-    json_object_object_add(AlarmJsonData, "AlarmVoiceDounloadURL", json_object_new_string(netclock_des_g->ElandNextAlarmData.AlarmVoiceDounloadURL));
+    json_object_object_add(AlarmJsonData, "AlarmSoundDownloadURL", json_object_new_string(netclock_des_g->ElandNextAlarmData.AlarmSoundDownloadURL));
+    json_object_object_add(AlarmJsonData, "AlarmVoiceDownloadURL", json_object_new_string(netclock_des_g->ElandNextAlarmData.AlarmVoiceDownloadURL));
     json_object_object_add(AlarmJsonData, "AlarmVolume", json_object_new_int(netclock_des_g->ElandNextAlarmData.AlarmVolume));
     json_object_object_add(AlarmJsonData, "VolumeStepupEnabled", json_object_new_int(netclock_des_g->ElandNextAlarmData.VolumeStepupEnabled));
     json_object_object_add(AlarmJsonData, "AlarmContinueMin", json_object_new_int(netclock_des_g->ElandNextAlarmData.AlarmContinueMin));
@@ -276,4 +288,218 @@ void destory_upload_data(void)
     free_json_obj(&ElandJsonData);
     free_json_obj(&AlarmJsonData);
     return;
+}
+//解析接收到的数据包
+OSStatus ProcessPostJson(char *InputJson)
+{
+    json_object *ReceivedJsonCache = NULL, *ElandJsonCache = NULL, *AlarmJsonCache = NULL;
+    if (*InputJson != '{')
+    {
+        Eland_log("error:received err json format data");
+        goto exit;
+    }
+    ReceivedJsonCache = json_tokener_parse((const char *)(InputJson));
+    if (ReceivedJsonCache == NULL)
+    {
+        Eland_log("json_tokener_parse error");
+        goto exit;
+    }
+    //解析Elanddata
+    ElandJsonCache = json_object_object_get(ReceivedJsonCache, "ElandData");
+    if ((ElandJsonCache == NULL) || ((json_object_get_object(ElandJsonCache)->head) == NULL))
+    {
+        Eland_log("get ElandJsonCache error");
+        goto exit;
+    }
+    //解析ElandDATA
+    json_object_object_foreach(ElandJsonCache, key, val)
+    {
+        if (!strcmp(key, "UserID"))
+        {
+            netclock_des_g->UserID = json_object_get_int(val);
+        }
+        else if (!strcmp(key, "ElandName"))
+        {
+            memset(netclock_des_g->ElandName, 0, sizeof(netclock_des_g->ElandName));
+            sprintf(netclock_des_g->ElandName, "%s", json_object_get_string(val));
+        }
+        else if (!strcmp(key, "ZoneOffset"))
+        {
+            netclock_des_g->ElandZoneOffset = json_object_get_int(val);
+        }
+        else if (!strcmp(key, "WIFISSID"))
+        {
+            memset(netclock_des_g->Wifissid, 0, sizeof(netclock_des_g->Wifissid));
+            sprintf(netclock_des_g->Wifissid, "%s", json_object_get_string(val));
+            if (!strncmp(netclock_des_g->Wifissid, "\0", 1))
+            {
+                Eland_log("WIFISSID not Available");
+                goto exit;
+            }
+        }
+        else if (!strcmp(key, "WIFIKEY"))
+        {
+            memset(netclock_des_g->WifiKey, 0, sizeof(netclock_des_g->WifiKey));
+            sprintf(netclock_des_g->WifiKey, "%s", json_object_get_string(val));
+            if (!strncmp(netclock_des_g->WifiKey, "\0", 1))
+            {
+                Eland_log("WIFIKEY not Available");
+                goto exit;
+            }
+        }
+        else if (!strcmp(key, "BackLightOffEnablefield"))
+        {
+            netclock_des_g->ElandBackLightOffEnable = json_object_get_int(val);
+        }
+        else if (!strcmp(key, "BackLightOffBeginTime"))
+        {
+            memset(netclock_des_g->ElandBackLightOffBeginTime, 0, sizeof(netclock_des_g->ElandBackLightOffBeginTime));
+            sprintf(netclock_des_g->ElandBackLightOffBeginTime, "%s", json_object_get_string(val));
+            if (!strncmp(netclock_des_g->ElandBackLightOffBeginTime, "\0", 1))
+            {
+                Eland_log("BackLightOffBeginTime not Available");
+                goto exit;
+            }
+        }
+        else if (!strcmp(key, "BackLightOffEndTime"))
+        {
+            memset(netclock_des_g->ElandBackLightOffEndTime, 0, sizeof(netclock_des_g->ElandBackLightOffEndTime));
+            sprintf(netclock_des_g->ElandBackLightOffEndTime, "%s", json_object_get_string(val));
+            if (!strncmp(netclock_des_g->ElandBackLightOffEndTime, "\0", 1))
+            {
+                Eland_log("BackLightOffBeginTime not Available");
+                goto exit;
+            }
+        }
+        else if (!strcmp(key, "FirmwareUpdateUrl"))
+        {
+            memset(netclock_des_g->ElandFirmwareUpdateUrl, 0, sizeof(netclock_des_g->ElandFirmwareUpdateUrl));
+            sprintf(netclock_des_g->ElandFirmwareUpdateUrl, "%s", json_object_get_string(val));
+            if (!strncmp(netclock_des_g->ElandFirmwareUpdateUrl, "\0", 1))
+            {
+                Eland_log("BackLightOffBeginTime not Available");
+                //goto exit;
+            }
+        }
+    }
+    //解析AlarmJsonCache
+    AlarmJsonCache = json_object_object_get(ElandJsonCache, "AlarmData");
+    if ((AlarmJsonCache == NULL) || ((json_object_get_object(AlarmJsonCache)->head) == NULL))
+    {
+        Eland_log("get AlarmJsonCache error");
+        goto exit;
+    }
+    json_object_object_foreach(AlarmJsonCache, key1, val1)
+    {
+        if (!strcmp(key1, "AlarmID"))
+        {
+            netclock_des_g->ElandNextAlarmData.AlarmID = json_object_get_int(val1);
+        }
+        else if (!strcmp(key1, "AlarmDateTime"))
+        {
+            memset(netclock_des_g->ElandNextAlarmData.AlarmDateTime, 0, sizeof(netclock_des_g->ElandNextAlarmData.AlarmDateTime));
+            sprintf(netclock_des_g->ElandNextAlarmData.AlarmDateTime, "%s", json_object_get_string(val1));
+            if (!strncmp(netclock_des_g->ElandNextAlarmData.AlarmDateTime, "\0", 1))
+            {
+                Eland_log("AlarmDateTime not Available");
+                goto exit;
+            }
+        }
+        else if (!strcmp(key1, "SnoozeEnabled"))
+        {
+            netclock_des_g->ElandNextAlarmData.SnoozeEnabled = json_object_get_int(val1);
+            if ((netclock_des_g->ElandNextAlarmData.SnoozeEnabled > 1) ||
+                (netclock_des_g->ElandNextAlarmData.SnoozeEnabled < 0))
+            {
+                Eland_log("SnoozeEnabled not Available");
+                netclock_des_g->ElandNextAlarmData.SnoozeEnabled = 1;
+            }
+        }
+        else if (!strcmp(key1, "SnoozeCount"))
+        {
+            netclock_des_g->ElandNextAlarmData.SnoozeCount = json_object_get_int(val1);
+            if ((netclock_des_g->ElandNextAlarmData.SnoozeCount > 30) ||
+                (netclock_des_g->ElandNextAlarmData.SnoozeCount < 1))
+            {
+                Eland_log("SnoozeCount not Available");
+                netclock_des_g->ElandNextAlarmData.SnoozeCount = 3;
+            }
+        }
+        else if (!strcmp(key1, "SnoozeIntervalMin"))
+        {
+            netclock_des_g->ElandNextAlarmData.SnoozeIntervalMin = json_object_get_int(val1);
+            if ((netclock_des_g->ElandNextAlarmData.SnoozeIntervalMin > 30) ||
+                (netclock_des_g->ElandNextAlarmData.SnoozeIntervalMin < 1))
+            {
+                Eland_log("SnoozeIntervalMin not Available");
+                netclock_des_g->ElandNextAlarmData.SnoozeIntervalMin = 10;
+            }
+        }
+        else if (!strcmp(key1, "AlarmPattern"))
+        {
+            netclock_des_g->ElandNextAlarmData.AlarmPattern = json_object_get_int(val1);
+            if ((netclock_des_g->ElandNextAlarmData.AlarmPattern > 4) ||
+                (netclock_des_g->ElandNextAlarmData.AlarmPattern < 1))
+            {
+                Eland_log("AlarmPattern not Available");
+                netclock_des_g->ElandNextAlarmData.AlarmPattern = 1;
+            }
+        }
+        else if (!strcmp(key1, "AlarmSoundDownloadURL"))
+        {
+            memset(netclock_des_g->ElandNextAlarmData.AlarmSoundDownloadURL, 0,
+                   sizeof(netclock_des_g->ElandNextAlarmData.AlarmSoundDownloadURL));
+            sprintf(netclock_des_g->ElandNextAlarmData.AlarmSoundDownloadURL, "%s", json_object_get_string(val1));
+            if (!strncmp(netclock_des_g->ElandNextAlarmData.AlarmSoundDownloadURL, "\0", 1))
+            {
+                Eland_log("AlarmSoundDownloadURL not Available");
+            }
+        }
+        else if (!strcmp(key1, "AlarmVoiceDownloadURL"))
+        {
+            memset(netclock_des_g->ElandNextAlarmData.AlarmVoiceDownloadURL, 0,
+                   sizeof(netclock_des_g->ElandNextAlarmData.AlarmVoiceDownloadURL));
+            sprintf(netclock_des_g->ElandNextAlarmData.AlarmVoiceDownloadURL, "%s", json_object_get_string(val1));
+            if (!strncmp(netclock_des_g->ElandNextAlarmData.AlarmVoiceDownloadURL, "\0", 1))
+            {
+                Eland_log("AlarmVoiceDownloadURL not Available");
+            }
+        }
+        else if (!strcmp(key1, "AlarmVolume"))
+        {
+            netclock_des_g->ElandNextAlarmData.AlarmVolume = json_object_get_int(val1);
+            if ((netclock_des_g->ElandNextAlarmData.AlarmVolume > 100) ||
+                (netclock_des_g->ElandNextAlarmData.AlarmVolume < 0))
+            {
+                Eland_log("AlarmVolume not Available");
+                netclock_des_g->ElandNextAlarmData.AlarmVolume = 80;
+            }
+        }
+        else if (!strcmp(key1, "VolumeStepupEnabled"))
+        {
+            netclock_des_g->ElandNextAlarmData.VolumeStepupEnabled = json_object_get_int(val1);
+            if ((netclock_des_g->ElandNextAlarmData.VolumeStepupEnabled > 1) ||
+                (netclock_des_g->ElandNextAlarmData.VolumeStepupEnabled < 0))
+            {
+                Eland_log("VolumeStepupEnabled not Available");
+                netclock_des_g->ElandNextAlarmData.VolumeStepupEnabled = 0;
+            }
+        }
+        else if (!strcmp(key1, "AlarmContinueMin"))
+        {
+            netclock_des_g->ElandNextAlarmData.AlarmContinueMin = json_object_get_int(val1);
+            if ((netclock_des_g->ElandNextAlarmData.AlarmContinueMin > 30) ||
+                (netclock_des_g->ElandNextAlarmData.AlarmContinueMin < 1))
+            {
+                Eland_log("AlarmContinueMin not Available");
+                netclock_des_g->ElandNextAlarmData.AlarmContinueMin = 5;
+            }
+        }
+    }
+    free_json_obj(&ReceivedJsonCache); //只要free最顶层的那个就可以
+    netclock_des_g->IsActivate = true;
+    return kNoErr;
+exit:
+    free_json_obj(&ReceivedJsonCache);
+    return kGeneralErr;
 }

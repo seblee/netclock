@@ -46,6 +46,17 @@ void micoNotify_WifiStatusHandler(WiFiEvent status, void *const inContext)
     case NOTIFY_STATION_UP:
         app_netclock_log("Wi-Fi STATION connected.");
         mico_rtos_set_semaphore(&wifi_netclock);
+
+        IPStatus_Cache = malloc(sizeof(IPStatusTypedef));
+        micoWlanGetIPStatus(IPStatus_Cache, Station);
+        memset(netclock_des_g->ElandIPstr, 0, sizeof(netclock_des_g->ElandIPstr));
+        sprintf(netclock_des_g->ElandIPstr, IPStatus_Cache->ip);
+        netclock_des_g->ElandDHCPEnable = IPStatus_Cache->dhcp;
+        memset(netclock_des_g->ElandSubnetMask, 0, sizeof(netclock_des_g->ElandSubnetMask));
+        sprintf(netclock_des_g->ElandSubnetMask, IPStatus_Cache->mask);
+        memset(netclock_des_g->ElandDefaultGateway, 0, sizeof(netclock_des_g->ElandDefaultGateway));
+        sprintf(netclock_des_g->ElandDefaultGateway, IPStatus_Cache->gate);
+        free(IPStatus_Cache);
         break;
     case NOTIFY_STATION_DOWN:
         app_netclock_log("Wi-Fi STATION disconnected.");
@@ -56,8 +67,13 @@ void micoNotify_WifiStatusHandler(WiFiEvent status, void *const inContext)
         IPStatus_Cache = malloc(sizeof(IPStatusTypedef));
         micoWlanGetIPStatus(IPStatus_Cache, Soft_AP);
         memset(netclock_des_g->ElandIPstr, 0, sizeof(netclock_des_g->ElandIPstr));
-        sprintf(netclock_des_g->ElandIPstr, )
-            netclock_des_g->ElandIPstr = IPStatus_Cache->ip;
+        sprintf(netclock_des_g->ElandIPstr, IPStatus_Cache->ip);
+        netclock_des_g->ElandDHCPEnable = IPStatus_Cache->dhcp;
+        memset(netclock_des_g->ElandSubnetMask, 0, sizeof(netclock_des_g->ElandSubnetMask));
+        sprintf(netclock_des_g->ElandSubnetMask, IPStatus_Cache->mask);
+        memset(netclock_des_g->ElandDefaultGateway, 0, sizeof(netclock_des_g->ElandDefaultGateway));
+        sprintf(netclock_des_g->ElandDefaultGateway, IPStatus_Cache->gate);
+        free(IPStatus_Cache);
         break;
     case NOTIFY_AP_DOWN:
         app_netclock_log("uAP disconnected.");
